@@ -1,0 +1,21 @@
+# docker-compose.yaml
+services:
+  frontend:
+    build:
+      context: ./rasch-client
+      dockerfile: Dockerfile
+    image: rasch-client:latest
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+  backend:
+    build:
+      context: ./rasch-server
+      dockerfile: Dockerfile
+    image: rasch-server:latest
+    ports:
+      - "3000:3000"
+      - "8787:8787"
+
