@@ -1,21 +1,25 @@
 # docker-compose.yaml
 services:
-  frontend:
-    build:
-      context: ./rasch-client
-      dockerfile: Dockerfile
-    image: rasch-client:latest
-    ports:
-      - "8080:80"
-    depends_on:
-      - backend
-
   backend:
     build:
       context: ./rasch-server
       dockerfile: Dockerfile
     image: rasch-server:latest
     ports:
-      - "3000:3000"
-      - "8787:8787"
+      - "${BACKEND_SERVER_PORT:-49435}:3000"
+      - "${BACKEND_RSTUDIO_PORT:-49436}:8787"
 
+  frontend:
+    build:
+      context: ./rasch-client
+      dockerfile: Dockerfile
+      args:
+        - VITE_BACKEND_SERVER_HOST_PORT=${BACKEND_SERVER_HOST:-localhost}:${BACKEND_SERVER_PORT:-49435} # Pass build arg to frontend
+    ports:
+      - "${FRONTEND_PORT:-49437}:80"
+    depends_on:
+      - backend
+
+networks:
+  default:
+    driver: bridge

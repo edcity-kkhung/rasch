@@ -77,6 +77,6 @@ app.get('/health', (_req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`API listening on http://localhost:${PORT}`);
+    console.log(`API listening on port ${PORT}`);
 });
 

@@ -14,6 +14,10 @@ RUN npm install
 # Copy the rest of the application files
 COPY . .
 
+# Accept the build-time ARG from docker-compose and set ENV so Vite can read it
+ARG VITE_BACKEND_SERVER_HOST_PORT="localhost:3000"
+ENV VITE_BACKEND_SERVER_HOST_PORT=$VITE_BACKEND_SERVER_HOST_PORT
+
 # Build the Vite React application for production
 RUN npm run build
 

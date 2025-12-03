@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
 
-const API_URL = 'http://localhost:3000/api/rasch_model_fit';
+const backendHostPort = import.meta.env.VITE_BACKEND_SERVER_HOST_PORT;
+const API_URL = `http://${backendHostPort}/api/rasch_model_fit`;
 
 function parseIntegers(input) {
   // Accept commas, spaces, newlines; ignore extra separators
