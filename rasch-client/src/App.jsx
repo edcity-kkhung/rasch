@@ -113,7 +113,7 @@ export default function App() {
 
       <form onSubmit={handleSubmit} style={styles.form}>
         <div style={styles.field}>
-          <label htmlFor="nrow" style={styles.label}>nrow</label>
+          <label htmlFor="nrow" style={styles.label}>Number of Students (rows)</label>
           <input
             id="nrow"
             type="number"
@@ -125,7 +125,7 @@ export default function App() {
         </div>
 
         <div style={styles.field}>
-          <label htmlFor="ncol" style={styles.label}>ncol</label>
+          <label htmlFor="ncol" style={styles.label}>Number of Items (columns)</label>
           <input
             id="ncol"
             type="number"
@@ -138,7 +138,7 @@ export default function App() {
 
         <div style={styles.field}>
           <label htmlFor="data_vector" style={styles.label}>
-            data_vector ({exampleMatrixInfo()})
+            data_vector (Serialize Matrix in rows) ({exampleMatrixInfo()})
           </label>
           <textarea
             id="data_vector"
@@ -168,13 +168,13 @@ export default function App() {
         <div style={styles.card}>
           <h2>API Result</h2>
           <div style={styles.arrayBlock}>
-            <h3>Difficulties</h3>
+            <h3>Item Difficulties</h3>
             <pre style={styles.pre}>
 {JSON.stringify(result.difficulties, null, 2)}
             </pre>
           </div>
           <div style={styles.arrayBlock}>
-            <h3>Abilities</h3>
+            <h3>Student Abilities</h3>
             <pre style={styles.pre}>
 {JSON.stringify(result.abilities, null, 2)}
             </pre>
