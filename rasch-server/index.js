@@ -67,8 +67,13 @@ app.post('/api/rasch_model_fit', (req, res) => {
             });
         })
         .catch((e) => {
+            console.error('R method call failed:');
             console.error(e);
-            res.status(500).json({ error: 'Internal Server Error' });
+            // res.status(500).json({ error: 'Internal Server Error' });
+            res.status(500).json({ error: {
+                message: 'Internal Server Error',
+                details: e.message || e.toString(),
+            }});
         });
 });
 
