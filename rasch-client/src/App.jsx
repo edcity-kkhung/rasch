@@ -2,7 +2,9 @@
 import React, { useState } from 'react';
 
 const backendHostPort = import.meta.env.VITE_BACKEND_SERVER_HOST_PORT;
-const API_URL = `http://${backendHostPort}/api/rasch_model_fit`;
+const API_URL_PREFIX = `http://${backendHostPort}/api`;
+const API_MODEL_FIT = `${API_URL_PREFIX}/rasch_model_fit`;
+const API_ESTIMATE_ABILITY = `${API_URL_PREFIX}/rasch_model_estimate_ability`;
 
 function parseIntegers(input) {
   // Accept commas, spaces, newlines; ignore extra separators
@@ -27,10 +29,12 @@ export default function App() {
   const [dataText, setDataText] = useState('1,0,0,0,0,0,1,0,0,0,1,1,1,0,0,1,1,1,1,0,0,1,1,1,1'); // demo data
   const [nrow, setNrow] = useState(5);
   const [ncol, setNcol] = useState(5);
+  const [responseText, setResponseText] = useState('1,0,0,0,1');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [estimateResult, setEstimateResult] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,7 +70,7 @@ export default function App() {
 
     setLoading(true);
     try {
-      const resp = await fetch(API_URL, {
+      const resp = await fetch(API_MODEL_FIT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -93,6 +97,54 @@ export default function App() {
         throw new Error('Unexpected API response shape.');
       }
       setResult(json);
+    } catch (err) {
+      setError(err.message || String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEstimateAbility = async (e) => {
+    e.preventDefault();
+    setError('');
+    setEstimateResult(null);
+    
+    let responses_vector = [];
+    let item_difficulties = result ? result.difficulties : null;
+    if (!item_difficulties) {
+      setError('Item difficulties not available. Please fit the model first.');
+      return;
+    }
+    try {
+      responses_vector = parseIntegers(responseText);
+    } catch (err) {
+      setError(err.message);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const resp = await fetch(API_ESTIMATE_ABILITY, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          responses_vector,
+          item_difficulties,
+        }),
+      });
+      if (!resp.ok) {
+        const msg = await resp.text();
+        throw new Error(
+          `HTTP ${resp.status}: ${msg || 'Request failed'}`
+        );
+      }
+
+      const json = await resp.json();
+      // Expecting: { ability: number[] }
+      if (!json || !Array.isArray(json.ability)) {
+        throw new Error('Unexpected API response shape.');
+      }
+      setEstimateResult(json);
     } catch (err) {
       setError(err.message || String(err));
     } finally {
@@ -179,6 +231,37 @@ export default function App() {
 {JSON.stringify(result.abilities, null, 2)}
             </pre>
           </div>
+
+          <form onSubmit={handleEstimateAbility} style={styles.form}>
+            <div style={styles.field}>
+              <label htmlFor="data_response" style={styles.label}>
+                data_response (Responses for a single student)
+              </label>
+              <textarea
+                id="data_response"
+                rows={6}
+                placeholder="Enter integers separated by spaces/commas/newlines"
+                value={responseText}
+                onChange={e => setResponseText(e.target.value)}
+                style={styles.textarea}
+              />
+              <small style={styles.hint}>
+                Example : <code>1 0 1 1 0</code> or <code>1,0,1,1,0</code>
+              </small>
+            </div>
+
+            <button type="submit" style={styles.button} disabled={loading}>
+              {loading ? 'Estimating…' : 'Estimate'}
+            </button>
+          </form>
+          {estimateResult && (
+            <div style={styles.arrayBlock}>
+              <h3>Estimated Ability</h3>
+              <pre style={styles.pre}>
+{JSON.stringify(estimateResult.ability, null, 2)}
+              </pre>
+            </div>
+          )}
         </div>
       )}
     </div>

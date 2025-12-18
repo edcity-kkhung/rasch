@@ -78,3 +78,132 @@ rasch_erm <- function(
     person_object = pp
   )
 }
+
+
+# Estimate Rasch ability for ONE new person using fixed item difficulties (no refit).
+rasch_theta_ml <- function(
+  x,
+  item_beta,
+  na_handling = c("omit", "zero"),
+  theta_bounds = c(-6, 6), tol = 1e-8, maxit = 100
+) {
+  na_handling <- match.arg(na_handling)
+  stopifnot(is.numeric(item_beta), is.numeric(x))
+  if (length(x) != length(item_beta))
+    stop("Length of x must match length of item_beta (same items, same order).")
+
+  # Handle missing
+  if (anyNA(x)) {
+    if (na_handling == "zero") {
+      x[is.na(x)] <- 0
+    } else { # omit
+      keep <- !is.na(x)
+      x         <- x[keep]
+      item_beta <- item_beta[keep]
+    }
+  }
+
+  # Guard: binary only
+  if (!all(x %in% c(0, 1)))
+    stop("Responses must be 0/1 (after NA handling).")
+
+  J      <- length(item_beta)
+  score  <- sum(x)
+  nonmis <- J
+
+  # Extreme scores: ML undefined under Rasch CML
+  if (score == 0L)  return(-Inf)
+  if (score == nonmis) return(Inf)
+
+  # Score function S(theta) = sum_j (x_j - P_j(theta))
+  S <- function(theta) {
+    eta <- theta - item_beta
+    pj  <- 1 / (1 + exp(-eta))
+    sum(x - pj)
+  }
+
+  # Root finding
+  lower <- theta_bounds[1]
+  upper <- theta_bounds[2]
+
+  # Expand bounds if S(lower) and S(upper) have same sign
+  sL <- S(lower); sU <- S(upper)
+  iter <- 0
+  while (sL * sU > 0 && iter < 10) {
+    lower <- lower - 2
+    upper <- upper + 2
+    sL <- S(lower); sU <- S(upper)
+    iter <- iter + 1
+  }
+
+  if (sL * sU > 0) {
+    # Fallback: use Newton steps from 0
+    theta <- 0
+    for (k in seq_len(maxit)) {
+      eta <- theta - item_beta
+      pj  <- 1 / (1 + exp(-eta))
+      w   <- pj * (1 - pj)
+      g   <- sum(x - pj)       # gradient
+      H   <- -sum(w)           # Hessian
+      step <- -g / H
+      theta <- theta + step
+      if (abs(step) < tol) break
+      theta <- max(min(theta, upper), lower)
+    }
+    return(theta)
+  }
+
+  uniroot(S, interval = c(lower, upper), tol = tol)$root
+}
+
+
+# Calibrate ONE new item difficulty b using fixed person abilities (theta).
+# x_new: 0/1 vector of responses to the new item (length = number of persons).
+# theta: numeric vector of person abilities on the same scale as your bank.
+rasch_calibrate_new_item_ml <- function(
+  x_new,
+  theta,
+  na_handling = c("omit", "zero"),
+  bounds = c(-8, 8), tol = 1e-8
+) {
+  na_handling <- match.arg(na_handling)
+  stopifnot(is.numeric(theta), is.numeric(x_new))
+  if (length(x_new) != length(theta))
+    stop("x_new and theta must have the same length (same persons).")
+  
+  # Handle missing
+  keep <- !is.na(x_new) & !is.na(theta)
+  if (na_handling == "omit") {
+    x_new <- x_new[keep]; theta <- theta[keep]
+  } else if (na_handling == "zero") {
+    x_new[is.na(x_new)] <- 0
+    theta <- theta[!is.na(theta) & !is.na(x_new)]
+    x_new <- x_new[!is.na(theta)]
+  }
+  
+  # Check binary
+  if (!all(x_new %in% c(0L, 1L))) stop("x_new must be 0/1 after NA handling.")
+  n <- length(x_new)
+  if (n < 2) stop("Need at least 2 persons to calibrate an item.")
+  
+  # Extremes: ML is undefined
+  s <- sum(x_new)
+  if (s == 0L)  return(list(difficulty = Inf,  se = NA_real_, method = "ML (all 0; b=+Inf)"))
+  if (s == n)   return(list(difficulty = -Inf, se = NA_real_, method = "ML (all 1; b=-Inf)"))
+  
+  # Score function S(b) = sum_i (P_i(b) - x_i)
+  S <- function(b) {
+    pj <- 1 / (1 + exp(-(theta - b)))
+    sum(pj - x_new)
+  }
+  
+  # Root finding
+  root <- uniroot(S, interval = bounds, tol = tol)$root
+  
+  # SE via Fisher information: I(b) = sum_i p_i(1-p_i)
+  pj <- 1 / (1 + exp(-(theta - root)))
+  info <- sum(pj * (1 - pj))
+  se <- 1 / sqrt(info)
+  
+  list(difficulty = root, se = se, method = "ML (anchored by theta)")
+}
