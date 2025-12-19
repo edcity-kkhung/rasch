@@ -30,7 +30,7 @@ rasch_erm <- function(
   
   # ---- Item difficulties ----
   # eRm stores item parameters in 'betapar', with sum-to-zero constraint by default.
-  item_beta <- as.numeric(fit$betapar) 
+  item_beta <- as.numeric(fit$betapar) * -1  # reverse sign to get difficulties
   names(item_beta) <- colnames(X)
   
   # SEs for items
