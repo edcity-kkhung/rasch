@@ -1,0 +1,58 @@
+====== Summary ======
+# There is some issue found in the NodeJS implemenation and therefore, I ran the RASCH model in R studio instead.
+
+# Paper ID: 64725
+# Number of Student Trials: 47
+# Number of Questions: 45
+# Score Percentage: 71.0658
+
+# A positive correlation between student ability estimated by Rasch model and their score in the trial is observed. This indicates that the Rasch model is effectively capturing the students' abilities based on their performance.
+# A negative correlation between item difficulty estimated by Rasch model and HKEAA correct percentage is observed. This makes sense because items with higher Rasch difficulty are harder, so lower the correct percentage.
+
+====== SQL : Count number of trial for each paper_id ======
+select paper_id, count(*) as trial_count
+from oqb.trial t 
+GROUP by paper_id
+
+====== SQL : Get Student's response on that paper ======
+SELECT
+	paper.id as paper_id,
+	trial.owner_id as owner_id,
+	trial.user_info as user_info,
+	trial.score as score,
+	trial.ranking as ranking,
+	trial_question.seq as question_seq,
+	trial_question.is_correct as question_response
+FROM oqb.paper AS paper
+INNER JOIN oqb.trial AS trial ON paper.id = trial.paper_id
+INNER JOIN oqb.trial_question AS trial_question ON trial.id = trial_question.trial_id
+WHERE
+	paper.id = 64725
+
+====== SQL : Get Questions that paper ======
+SELECT
+	paper_question.paper_id as paper_id,
+	paper_question.seq as seq,
+	paper_question.question_id as question_id,
+	question.qcode as qcode,
+	question.hkeaa_correct_pc as hkeaa_correct_pc,
+	question.difficulty_code as difficulty,
+	question.eaa_difficulty_code as eaa_difficulty
+FROM
+	oqb.paper_question as paper_question
+JOIN
+	oqb.question AS question ON paper_question.question_id = question.id
+WHERE
+	paper_question.paper_id = 64725
+
+# Read all columns as numeric (same type as c(1,2,3,4,5))
+n_cols <- length(read.csv("W:/github/rasch/oqb/paper_id_64725/data_47_45.csv", nrows = 1))
+df <- read.csv("W:/github/rasch/oqb/paper_id_64725/data_47_45.csv",
+		header = FALSE,
+               colClasses = rep("numeric", n_cols),
+               na.strings = c("", "NA"))
+data <- as.numeric(unlist(df, use.names = FALSE))
+res <- rasch_model_fit(data, 47, 45)
+write.csv(res$ability, "W:/github/rasch/oqb/paper_id_64725/ability.csv")
+write.csv(res$item_difficulty, "W:/github/rasch/oqb/paper_id_64725/item_difficulty.csv")
+
