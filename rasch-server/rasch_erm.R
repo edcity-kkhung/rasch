@@ -26,6 +26,7 @@ rasch_erm <- function(
   if (!requireNamespace("eRm", quietly = TRUE))
     stop("Package 'eRm' is required. Please install it: install.packages('eRm')")
   
+  message("Fitting Rasch model using eRm::RM...")
   fit <- eRm::RM(X)  # CML for Rasch model
   
   # ---- Item difficulties ----

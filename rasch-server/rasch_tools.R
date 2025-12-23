@@ -1,5 +1,4 @@
-
-rasch_model_fit <- function(data_vector, nrow, ncol) {
+rasch_model_fit <- function(data_vector_file, nrow, ncol) {
   # Fit Rasch model and return results as JSON 
   library("eRm")
   library("jsonlite")
@@ -7,12 +6,23 @@ rasch_model_fit <- function(data_vector, nrow, ncol) {
   source("./rasch_erm.R")
   
   # Reshape data vector into matrix
+  data_vector <- readDataVectorFile(data_vector_file)
   X <- matrix(data_vector, nrow = nrow, ncol = ncol, byrow = TRUE)
   
   # Fit and extract results
   res <- rasch_erm(X, verbose = TRUE)
   
   return(toJSON(list(difficulties = res$item_difficulty, abilities = res$ability)))
+}
+
+readDataVectorFile <- function(file_path) {
+  n_cols <- length(read.csv(file_path, nrows = 1))
+  df <- read.csv(file_path,
+      header = FALSE,
+                colClasses = rep("numeric", n_cols),
+                na.strings = c("", "NA"))
+  data <- as.numeric(unlist(df, use.names = FALSE))
+  return(data)
 }
 
 rasch_model_estimate_ability <- function(responses_vector, item_difficulties) {

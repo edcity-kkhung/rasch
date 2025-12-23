@@ -4,6 +4,10 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const R = require('r-integration');
+const tmp = require('tmp');
+const fs = require('fs');
+const csv = require('@fast-csv/format');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -50,31 +54,76 @@ app.post('/api/rasch_model_fit', (req, res) => {
 
     const { data_vector, nrow, ncol } = req.body;
 
-    R.callMethodAsync(
-        "./rasch_tools.R",
-        "rasch_model_fit",
-        {
-            data_vector: data_vector,
-            nrow: nrow,
-            ncol: ncol,
-        },
-        // "C:\\Users\\kk.hung\\AppData\\Local\\Programs\\R"
-    )
-        .then((result) => {
-            res.json({
-                abilities: result[0].abilities,
-                difficulties: result[0].difficulties,
+    // R.callMethodAsync(
+    //     "./rasch_tools.R",
+    //     "rasch_model_fit",
+    //     {
+    //         data_vector: data_vector,
+    //         nrow: nrow,
+    //         ncol: ncol,
+    //     },
+    //     // "C:\\Users\\kk.hung\\AppData\\Local\\Programs\\R"
+    // )
+    //     .then((result) => {
+    //         res.json({
+    //             abilities: result[0].abilities,
+    //             difficulties: result[0].difficulties,
+    //         });
+    //     })
+    //     .catch((e) => {
+    //         console.error('R method call failed:');
+    //         console.error(e);
+    //         // res.status(500).json({ error: 'Internal Server Error' });
+    //         res.status(500).json({ error: {
+    //             message: 'Internal Server Error',
+    //             details: e.message || e.toString(),
+    //         }});
+    //     });
+
+    tmp.file({tmpdir: "."}, function _tempFileCreated(err, tempFilePath, tempFileFD, cleanupCallback) {
+        if (err) throw err;
+
+        filename = path.basename(tempFilePath);
+        // console.log('File: ', tempFilePath);
+        // console.log('Filename: ', filename);
+        // console.log('Filedescriptor: ', tempFileFD);
+
+        csv.writeToPath(tempFilePath, [data_vector], { headers: false })
+            .on('finish', () => {
+                R.callMethodAsync(
+                    "./rasch_tools.R",
+                    "rasch_model_fit",
+                    {
+                        data_vector_file: `./${filename}`,
+                        nrow: nrow,
+                        ncol: ncol,
+                    },
+                    // "C:\\Users\\kk.hung\\AppData\\Local\\Programs\\R"
+                )
+                .then((result) => {
+                    res.json({
+                        abilities: result[0].abilities,
+                        difficulties: result[0].difficulties,
+                    });
+
+                    // You can add code here to handle after the CSV has been written
+                    cleanupCallback();                        
+                })
+                .catch((e) => {
+                    console.error('R method call failed:');
+                    console.error(e);
+                    // res.status(500).json({ error: 'Internal Server Error' });
+                    res.status(500).json({ error: {
+                        message: 'Internal Server Error',
+                        details: e.message || e.toString(),
+                    }});
+
+                    // You can add code here to handle after the CSV has been written
+                    cleanupCallback();
+                });
+
             });
-        })
-        .catch((e) => {
-            console.error('R method call failed:');
-            console.error(e);
-            // res.status(500).json({ error: 'Internal Server Error' });
-            res.status(500).json({ error: {
-                message: 'Internal Server Error',
-                details: e.message || e.toString(),
-            }});
-        });
+    })
 });
 
 /**
